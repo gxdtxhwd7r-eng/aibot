@@ -1,0 +1,2 @@
+"""АМК AI backend package."""
+
