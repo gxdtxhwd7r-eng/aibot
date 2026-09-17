@@ -1,0 +1,74 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="AI-помощник менеджера АМК для создания персональных сообщений продавцам автомобилей">
+  <title>АМК AI — Комиссионная продажа</title>
+  <link rel="stylesheet" href="/static/styles.css">
+  <script src="/static/app.js" defer></script>
+</head>
+<body>
+  <div class="ambient ambient-one"></div>
+  <div class="ambient ambient-two"></div>
+  <main class="shell">
+    <header class="topbar">
+      <a class="brand" href="/" aria-label="АМК AI, на главную">
+        <span class="brand-mark">A</span>
+        <span>АМК <b>AI</b></span>
+      </a>
+      <span class="status"><i></i> Локальный помощник</span>
+    </header>
+
+    <section class="hero">
+      <div class="eyebrow">AI-ПОМОЩНИК МЕНЕДЖЕРА</div>
+      <h1>АМК AI —<br><span>Комиссионная продажа</span></h1>
+      <p>Создание персональных сообщений продавцам автомобилей</p>
+    </section>
+
+    <section class="workspace" aria-labelledby="ad-label">
+      <div class="field-heading">
+        <div>
+          <label id="ad-label" for="advertisement">Текст объявления</label>
+          <p>Вставьте описание автомобиля — AI найдёт сильную деталь и подготовит обращение.</p>
+        </div>
+        <button id="clear-button" class="text-button" type="button">Очистить</button>
+      </div>
+      <div class="textarea-wrap">
+        <textarea id="advertisement" maxlength="20000" placeholder="Например: Kia Rio 2020 года, один владелец, обслуживалась у дилера..." aria-describedby="counter"></textarea>
+        <span id="counter">0 / 20 000</span>
+      </div>
+      <div id="error" class="notice error" role="alert" hidden></div>
+      <button id="generate-button" class="primary-button" type="button">
+        <span class="button-icon">✦</span>
+        <span class="button-label">Создать сообщение</span>
+        <span class="spinner" aria-hidden="true"></span>
+      </button>
+    </section>
+
+    <section id="result" class="result" aria-live="polite" hidden>
+      <div id="blocked-result" class="blocked" hidden>
+        <span class="blocked-icon">!</span>
+        <div><span>Рекомендация</span><h2 id="blocked-reason"></h2></div>
+      </div>
+      <div id="success-result" hidden>
+        <div class="result-topline"><span>Результат анализа</span><span id="car" class="car-pill"></span></div>
+        <article class="result-card hook-card">
+          <div class="card-icon">◎</div>
+          <div><h2>Что заинтересовало клиента</h2><p id="hook"></p></div>
+        </article>
+        <article class="result-card message-card">
+          <div class="message-heading"><div class="card-icon">↗</div><h2>Готовое сообщение</h2></div>
+          <p id="message"></p>
+          <div class="result-actions">
+            <button id="copy-button" class="copy-button" type="button">Скопировать сообщение</button>
+            <button id="regenerate-button" class="secondary-button" type="button">Создать заново</button>
+          </div>
+        </article>
+      </div>
+    </section>
+
+    <footer><span>АМК AI</span><span>Объявления не сохраняются</span></footer>
+  </main>
+</body>
+</html>
