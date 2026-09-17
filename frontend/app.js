@@ -73,8 +73,8 @@ regenerateButton.addEventListener('click', generateMessage);
 clearButton.addEventListener('click', () => { advertisement.value = ''; resetOutput(); updateCounter(); advertisement.focus(); });
 copyButton.addEventListener('click', async () => {
   try {
-    await navigator.clipboard.writeText(document.querySelector('#message').textContent);
-    copyButton.textContent = 'Скопировано';
+    await copyText(document.querySelector('#message').textContent);
+    copyButton.textContent = 'Скопировано ✓';
     setTimeout(() => { copyButton.textContent = 'Скопировать сообщение'; }, 1600);
   } catch { showError('Не удалось скопировать. Выделите сообщение вручную.'); }
 });
@@ -109,12 +109,49 @@ document.querySelector('#import-button').addEventListener('click', async () => {
 });
 function safe(value) { const node=document.createElement('span'); node.textContent=value||'—'; return node.innerHTML; }
 function webLink(lead) { const value=lead.source_url||lead.cm_url||''; return /^https?:\/\//i.test(value)?value:''; }
+async function copyText(text) {
+  if (navigator.clipboard?.writeText) {
+    try {
+      await navigator.clipboard.writeText(text);
+      return;
+    } catch {
+      // Clipboard API is commonly denied on plain HTTP; use the legacy selection fallback.
+    }
+  }
+  const textarea=document.createElement('textarea');
+  textarea.value=text;
+  textarea.setAttribute('readonly','');
+  textarea.style.position='fixed';
+  textarea.style.left='-9999px';
+  textarea.style.opacity='0';
+  document.body.appendChild(textarea);
+  textarea.select();
+  textarea.setSelectionRange(0,textarea.value.length);
+  let copied=false;
+  try { copied=document.execCommand('copy'); } finally { textarea.remove(); }
+  if (!copied) throw new Error('Copy command was rejected');
+}
+async function copyLeadMessage(button,message) {
+  const error=document.querySelector('#import-error');
+  try {
+    await copyText(message);
+    error.hidden=true;
+    button.textContent='Скопировано ✓';
+    setTimeout(()=>{ if(button.isConnected)button.textContent='Скопировать сообщение'; },1700);
+  } catch {
+    error.textContent='Не удалось скопировать сообщение. Выделите текст сообщения вручную.';
+    error.hidden=false;
+  }
+}
 async function loadLeads() {
   try {
     const response=await fetch('/api/leads'); if(!response.ok)return; const data=await response.json(); const active=data.status.new+data.status.processing;
     document.querySelector('#progress').textContent=active?`Обрабатывается: ${active}`:`Готово: ${data.status.ready}, исключено: ${data.status.do_not_contact}`;
     document.querySelector('#leads').innerHTML=data.items.map(lead=>`<article class="lead ${lead.analysis_status==='do_not_contact'?'lead-blocked':''}"><div class="lead-title"><div><h3>${safe([lead.brand,lead.model].filter(Boolean).join(' '))}</h3><p>${safe(lead.year)} · ${safe(lead.mileage)} км · ${safe(lead.price)} ₽</p></div><span>${safe(lead.source||'CM.Expert')}</span></div><p class="lead-city">${safe(lead.city)} · ${safe(lead.analysis_status)}</p>${['do_not_contact','error'].includes(lead.analysis_status)?`<div class="lead-reason">${safe(lead.reason)}</div>`:`<h4>Зацепка AI</h4><p>${safe(lead.hook)}</p><h4>Готовое сообщение</h4><p class="lead-message">${safe(lead.message)}</p>`}<div class="lead-actions">${lead.message?`<button data-copy="${lead.id}">Скопировать сообщение</button>`:''}${webLink(lead)?`<a href="${safe(webLink(lead))}" target="_blank" rel="noopener noreferrer">Открыть объявление</a>`:''}<button data-status="contacted" data-id="${lead.id}">Связались</button><button data-status="skipped" data-id="${lead.id}">Пропустить</button></div></article>`).join('')||'<p class="empty">Пока нет импортированных объявлений.</p>';
-    document.querySelectorAll('[data-copy]').forEach(button=>button.onclick=()=>navigator.clipboard.writeText(data.items.find(item=>item.id===Number(button.dataset.copy)).message));
+    document.querySelectorAll('[data-copy]').forEach(button=>{
+      const lead=data.items.find(item=>item.id===Number(button.dataset.copy));
+      button.onclick=()=>copyLeadMessage(button,lead.message);
+    });
     document.querySelectorAll('[data-status]').forEach(button=>button.onclick=async()=>{await fetch(`/api/leads/${button.dataset.id}/status`,{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify({status:button.dataset.status})});loadLeads();});
     clearTimeout(pollTimer); if(active)pollTimer=setTimeout(loadLeads,1800);
   } catch { document.querySelector('#progress').textContent='Не удалось обновить список'; }
