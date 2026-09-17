@@ -79,3 +79,43 @@ copyButton.addEventListener('click', async () => {
   } catch { showError('Не удалось скопировать. Выделите сообщение вручную.'); }
 });
 
+const tabs = document.querySelectorAll('.tab');
+const fileInput = document.querySelector('#xlsx-file');
+const dropZone = document.querySelector('#drop-zone');
+let pollTimer;
+tabs.forEach(tab => tab.addEventListener('click', () => {
+  tabs.forEach(item => item.classList.toggle('active', item === tab));
+  document.querySelector('#manual-mode').hidden = tab.dataset.tab !== 'manual';
+  document.querySelector('#batch-mode').hidden = tab.dataset.tab !== 'batch';
+  if (tab.dataset.tab === 'batch') loadLeads(); else clearTimeout(pollTimer);
+}));
+fileInput.addEventListener('change', () => { document.querySelector('#file-name').textContent = fileInput.files[0]?.name || 'Файл не выбран'; });
+['dragenter','dragover'].forEach(name => dropZone.addEventListener(name, event => { event.preventDefault(); dropZone.classList.add('dragging'); }));
+['dragleave','drop'].forEach(name => dropZone.addEventListener(name, event => { event.preventDefault(); dropZone.classList.remove('dragging'); }));
+dropZone.addEventListener('drop', event => { if (event.dataTransfer.files[0]) { fileInput.files = event.dataTransfer.files; fileInput.dispatchEvent(new Event('change')); } });
+
+document.querySelector('#import-button').addEventListener('click', async () => {
+  const error = document.querySelector('#import-error'); error.hidden = true;
+  if (!fileInput.files[0]) { error.textContent = 'Выберите файл XLSX.'; error.hidden = false; return; }
+  const button = document.querySelector('#import-button'); button.disabled = true; button.textContent = 'Загружаем…';
+  try {
+    const body = new FormData(); body.append('file', fileInput.files[0]);
+    const response = await fetch('/api/import', {method:'POST', body}); const data = await response.json();
+    if (!response.ok) throw new Error(data.detail || 'Не удалось импортировать файл.');
+    const labels = {total_rows:'Строк',created:'Добавлено',duplicates:'Повторы',blocked:'Не связываться',queued:'В обработке',errors:'Ошибки'};
+    const stats = document.querySelector('#import-stats'); stats.innerHTML = Object.entries(labels).map(([key,label]) => `<div><b>${data[key]}</b><span>${label}</span></div>`).join(''); stats.hidden = false; await loadLeads();
+  } catch (failure) { error.textContent = failure.message; error.hidden = false; }
+  finally { button.disabled = false; button.textContent = 'Загрузить и обработать'; }
+});
+function safe(value) { const node=document.createElement('span'); node.textContent=value||'—'; return node.innerHTML; }
+function webLink(lead) { const value=lead.source_url||lead.cm_url||''; return /^https?:\/\//i.test(value)?value:''; }
+async function loadLeads() {
+  try {
+    const response=await fetch('/api/leads'); if(!response.ok)return; const data=await response.json(); const active=data.status.new+data.status.processing;
+    document.querySelector('#progress').textContent=active?`Обрабатывается: ${active}`:`Готово: ${data.status.ready}, исключено: ${data.status.do_not_contact}`;
+    document.querySelector('#leads').innerHTML=data.items.map(lead=>`<article class="lead ${lead.analysis_status==='do_not_contact'?'lead-blocked':''}"><div class="lead-title"><div><h3>${safe([lead.brand,lead.model].filter(Boolean).join(' '))}</h3><p>${safe(lead.year)} · ${safe(lead.mileage)} км · ${safe(lead.price)} ₽</p></div><span>${safe(lead.source||'CM.Expert')}</span></div><p class="lead-city">${safe(lead.city)} · ${safe(lead.analysis_status)}</p>${['do_not_contact','error'].includes(lead.analysis_status)?`<div class="lead-reason">${safe(lead.reason)}</div>`:`<h4>Зацепка AI</h4><p>${safe(lead.hook)}</p><h4>Готовое сообщение</h4><p class="lead-message">${safe(lead.message)}</p>`}<div class="lead-actions">${lead.message?`<button data-copy="${lead.id}">Скопировать сообщение</button>`:''}${webLink(lead)?`<a href="${safe(webLink(lead))}" target="_blank" rel="noopener noreferrer">Открыть объявление</a>`:''}<button data-status="contacted" data-id="${lead.id}">Связались</button><button data-status="skipped" data-id="${lead.id}">Пропустить</button></div></article>`).join('')||'<p class="empty">Пока нет импортированных объявлений.</p>';
+    document.querySelectorAll('[data-copy]').forEach(button=>button.onclick=()=>navigator.clipboard.writeText(data.items.find(item=>item.id===Number(button.dataset.copy)).message));
+    document.querySelectorAll('[data-status]').forEach(button=>button.onclick=async()=>{await fetch(`/api/leads/${button.dataset.id}/status`,{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify({status:button.dataset.status})});loadLeads();});
+    clearTimeout(pollTimer); if(active)pollTimer=setTimeout(loadLeads,1800);
+  } catch { document.querySelector('#progress').textContent='Не удалось обновить список'; }
+}

@@ -26,6 +26,8 @@
       <p>Создание персональных сообщений продавцам автомобилей</p>
     </section>
 
+    <nav class="tabs" aria-label="Режим работы"><button class="tab active" data-tab="manual" type="button">Ручной анализ</button><button class="tab" data-tab="batch" type="button">Массовая обработка CM.Expert</button></nav>
+    <div id="manual-mode">
     <section class="workspace" aria-labelledby="ad-label">
       <div class="field-heading">
         <div>
@@ -45,7 +47,6 @@
         <span class="spinner" aria-hidden="true"></span>
       </button>
     </section>
-
     <section id="result" class="result" aria-live="polite" hidden>
       <div id="blocked-result" class="blocked" hidden>
         <span class="blocked-icon">!</span>
@@ -67,8 +68,19 @@
         </article>
       </div>
     </section>
+    </div>
+    <div id="batch-mode" hidden>
+      <section class="workspace batch-workspace">
+        <div class="field-heading"><div><label for="xlsx-file">Выгрузка CM.Expert</label><p>Загрузите XLSX — повторные объявления будут пропущены автоматически.</p></div></div>
+        <label id="drop-zone" class="drop-zone" for="xlsx-file"><strong>Перетащите XLSX сюда</strong><span>или нажмите, чтобы выбрать файл</span><em id="file-name">Файл не выбран</em></label>
+        <input id="xlsx-file" type="file" accept=".xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" hidden>
+        <div id="import-error" class="notice error" role="alert" hidden></div>
+        <button id="import-button" class="primary-button" type="button">Загрузить и обработать</button><div id="import-stats" class="stats" hidden></div>
+      </section>
+      <section class="leads-section"><div class="leads-heading"><h2>Лиды</h2><span id="progress">Ожидание загрузки</span></div><div id="leads" class="leads"></div></section>
+    </div>
 
-    <footer><span>АМК AI</span><span>Объявления не сохраняются</span></footer>
+    <footer><span>АМК AI</span><span>Данные хранятся локально</span></footer>
   </main>
 </body>
 </html>
